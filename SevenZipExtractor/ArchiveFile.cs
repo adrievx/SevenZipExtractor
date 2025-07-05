@@ -17,8 +17,11 @@ namespace SevenZipExtractor
 
         public SevenZipFormat Format { get; private set; }
 
-        public ArchiveFile(string archiveFilePath, string libraryFilePath = null)
+        public string Password { get; }
+
+        public ArchiveFile(string archiveFilePath, string password = null, string libraryFilePath = null)
         {
+            this.Password = password;
             this.libraryFilePath = libraryFilePath;
 
             this.InitializeAndValidateLibrary();
@@ -51,8 +54,9 @@ namespace SevenZipExtractor
             this.archiveStream = new InStreamWrapper(File.OpenRead(archiveFilePath));
         }
 
-        public ArchiveFile(Stream archiveStream, SevenZipFormat? format = null, string libraryFilePath = null)
+        public ArchiveFile(Stream archiveStream, SevenZipFormat? format = null, string password = null, string libraryFilePath = null)
         {
+            this.Password = password;
             this.libraryFilePath = libraryFilePath;
 
             this.InitializeAndValidateLibrary();
@@ -83,7 +87,7 @@ namespace SevenZipExtractor
         }
 
 
-        public void Extract(string outputFolder, bool overwrite = false, string password = null)
+        public void Extract(string outputFolder, bool overwrite = false)
         {
             this.Extract(entry =>
             {
@@ -100,11 +104,10 @@ namespace SevenZipExtractor
                 }
 
                 return null;
-            },
-            password);
+            });
         }
 
-        public void Extract(Func<Entry, string> getOutputPath, string password = null)
+        public void Extract(Func<Entry, string> getOutputPath)
         {
             IList<Stream> fileStreams = new List<Stream>();
 
@@ -137,7 +140,7 @@ namespace SevenZipExtractor
                     fileStreams.Add(File.Create(outputPath));
                 }
 
-                this.archive.Extract(null, 0xFFFFFFFF, 0, new ArchiveStreamsCallback(fileStreams, password));
+                this.archive.Extract(null, 0xFFFFFFFF, 0, new ArchiveStreamsCallback(fileStreams, this.Password));
             }
             finally
             {
@@ -161,7 +164,7 @@ namespace SevenZipExtractor
                 }
 
                 ulong checkPos = 32 * 1024;
-                int open = this.archive.Open(this.archiveStream, ref checkPos, null);
+                int open = this.archive.Open(this.archiveStream, ref checkPos, new ArchiveOpenCallback(this.Password));
 
                 if (open != 0)
                 {
